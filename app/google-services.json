@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "613555458349",
+    "project_id": "panelsena-de907",
+    "storage_bucket": "panelsena-de907.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:613555458349:android:6cc2a73967c0ac7ea743a4",
+        "android_client_info": {
+          "package_name": "com.panelsena.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "613555458349-abt1g20pc66ajakipoqmo2fjit8grmcr.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.panelsena.app",
+            "certificate_hash": "5364c7906facea0391eeaa1add844a99ba1479e6"
+          }
+        },
+        {
+          "client_id": "613555458349-fa99tp0go8dr1pv08qp20fjdd3ncfj4j.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDDUcWFfmuIH-9TWllw8REDVIBENHH-uTA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "613555458349-fa99tp0go8dr1pv08qp20fjdd3ncfj4j.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
