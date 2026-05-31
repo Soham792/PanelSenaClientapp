@@ -1,5 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-
-    <style name="Theme.PanelSenaClient" parent="android:Theme.Material.Light.NoActionBar" />
+    <!-- Launch theme used before Compose draws. Keeps the warm PanelSena backdrop and
+         a light status bar to avoid a jarring white/dark flash on startup. -->
+    <style name="Theme.PanelSenaClient" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/ps_background</item>
+        <item name="android:statusBarColor">@color/ps_background</item>
+        <item name="android:navigationBarColor">@color/ps_background</item>
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
 </resources>

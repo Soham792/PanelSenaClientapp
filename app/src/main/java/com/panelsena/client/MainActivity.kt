@@ -41,7 +41,6 @@ import com.panelsena.client.core.theme.CardPurple
 import com.panelsena.client.core.theme.CardSky
 import com.panelsena.client.core.theme.CardYellow
 import com.panelsena.client.core.theme.PanelSenaClientTheme
-import com.panelsena.client.core.utils.ClientIdManager
 import com.panelsena.client.ui.DisplayViewModel
 import com.panelsena.client.ui.auth.AuthScreen
 import com.panelsena.client.ui.components.CustomFloatingNavBar
@@ -56,9 +55,6 @@ import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
-
-    @Inject
-    lateinit var clientIdManager: ClientIdManager
 
     @Inject
     lateinit var firebaseAuth: FirebaseAuth
@@ -78,7 +74,6 @@ class MainActivity : ComponentActivity() {
             PanelSenaClientTheme {
                 var currentScreen by remember { mutableStateOf("splash") } // "splash" | "auth" | "main" | "player"
                 var selectedTab by remember { mutableIntStateOf(0) } // 0: Home, 1: Display, 2: Schedule, 3: Info
-                var playerStartIndex by remember { mutableIntStateOf(0) }
                 var showProfileSheet by remember { mutableStateOf(false) }
                 
                 // Dynamic Keep Awake Management
@@ -95,6 +90,18 @@ class MainActivity : ComponentActivity() {
 
                 val isOnline by viewModel.isOnline.collectAsState()
                 val displayContent by viewModel.displayContent.collectAsState()
+                val linkState by viewModel.linkState.collectAsState()
+                val playback by viewModel.playback.collectAsState()
+
+                // Auto-enter/exit the fullscreen player as playback is started/stopped,
+                // including remotely via dashboard commands.
+                LaunchedEffect(playback.isPlaying, playback.queue.isEmpty()) {
+                    if (currentScreen == "main" && playback.isPlaying && playback.queue.isNotEmpty()) {
+                        currentScreen = "player"
+                    } else if (currentScreen == "player" && (!playback.isPlaying || playback.queue.isEmpty())) {
+                        currentScreen = "main"
+                    }
+                }
 
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
@@ -123,7 +130,6 @@ class MainActivity : ComponentActivity() {
                             when (currentScreen) {
                                 "splash" -> {
                                     SplashScreen(
-                                        clientIdManager = clientIdManager,
                                         onSplashComplete = {
                                             currentScreen = if (firebaseAuth.currentUser != null) "main" else "auth"
                                         }
@@ -142,21 +148,15 @@ class MainActivity : ComponentActivity() {
                                         0 -> HomeScreen(
                                             viewModel = viewModel,
                                             display = displayContent,
-                                            onPlayAll = {
-                                                playerStartIndex = 0
-                                                currentScreen = "player"
-                                            },
-                                            onPlayItem = { index ->
-                                                playerStartIndex = index
-                                                currentScreen = "player"
-                                            },
+                                            onPlayAll = { viewModel.playLocalQueue(0) },
+                                            onPlayItem = { index -> viewModel.playLocalQueue(index) },
                                             onProfileClick = {
                                                 showProfileSheet = true
                                             },
                                             modifier = Modifier.padding(innerPadding)
                                         )
                                         1 -> DisplayInfoScreen(
-                                            clientId = viewModel.clientId,
+                                            linkState = linkState,
                                             display = displayContent,
                                             isOnline = true,
                                             modifier = Modifier.padding(innerPadding)
@@ -167,7 +167,7 @@ class MainActivity : ComponentActivity() {
                                             modifier = Modifier.padding(innerPadding)
                                         )
                                         3 -> DisplayInfoScreen(
-                                            clientId = viewModel.clientId,
+                                            linkState = linkState,
                                             display = displayContent,
                                             isOnline = true,
                                             modifier = Modifier.padding(innerPadding)
@@ -175,13 +175,14 @@ class MainActivity : ComponentActivity() {
                                     }
                                 }
                                 "player" -> {
-                                    displayContent?.mediaItems?.let { items ->
+                                    if (playback.queue.isNotEmpty()) {
                                         FullscreenPlayerScreen(
-                                            mediaItems = items,
-                                            startIndex = playerStartIndex,
+                                            mediaItems = playback.queue,
+                                            currentIndex = playback.currentIndex,
+                                            onAdvance = { viewModel.onMediaCompleted() },
                                             onBack = { currentScreen = "main" }
                                         )
-                                    } ?: run {
+                                    } else {
                                         currentScreen = "main"
                                     }
                                 }
@@ -199,13 +200,14 @@ class MainActivity : ComponentActivity() {
                             ) {
                                 SettingsBottomSheetContent(
                                     firebaseAuth = firebaseAuth,
-                                    clientId = viewModel.clientId,
+                                    deviceId = viewModel.deviceId,
+                                    deviceKey = viewModel.deviceKey,
                                     keepAwake = keepAwake,
                                     onKeepAwakeChange = { keepAwake = it },
                                     offlineSync = offlineSync,
                                     onOfflineSyncChange = { offlineSync = it },
                                     onLogout = {
-                                        firebaseAuth.signOut()
+                                        viewModel.signOut()
                                         currentScreen = "auth"
                                         showProfileSheet = false
                                     }
@@ -222,7 +224,8 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun SettingsBottomSheetContent(
     firebaseAuth: FirebaseAuth,
-    clientId: String,
+    deviceId: String,
+    deviceKey: String,
     keepAwake: Boolean,
     onKeepAwakeChange: (Boolean) -> Unit,
     offlineSync: Boolean,
@@ -309,7 +312,7 @@ fun SettingsBottomSheetContent(
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        // Client ID Info Card
+        // Device Linking Credentials Card — enter these in the dashboard to link this device
         Card(
             colors = CardDefaults.cardColors(containerColor = Color.White),
             shape = RoundedCornerShape(20.dp),
@@ -319,56 +322,84 @@ fun SettingsBottomSheetContent(
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
-                    text = "Display Client ID",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Color.Gray
+                    text = "Link this device in the dashboard",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF1A1A2E)
                 )
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Device ID
+                Text(text = "Device ID", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                Spacer(modifier = Modifier.height(2.dp))
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        text = clientId.ifEmpty { "LOADING-ID" },
-                        style = MaterialTheme.typography.titleLarge,
+                        text = deviceId.ifEmpty { "GENERATING…" },
+                        style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFF1A1A2E),
-                        letterSpacing = 1.5.sp,
                         modifier = Modifier.weight(1f)
                     )
                     IconButton(
                         onClick = {
-                            clipboardManager.setText(AnnotatedString(clientId))
-                            Toast.makeText(context, "Client ID copied!", Toast.LENGTH_SHORT).show()
+                            clipboardManager.setText(AnnotatedString(deviceId))
+                            Toast.makeText(context, "Device ID copied!", Toast.LENGTH_SHORT).show()
                         },
                         modifier = Modifier.size(36.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Rounded.ContentCopy,
-                            contentDescription = "Copy ID",
-                            tint = Color(0xFF1A1A2E),
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-                    IconButton(
-                        onClick = {
-                            val intent = Intent(Intent.ACTION_SEND).apply {
-                                type = "text/plain"
-                                putExtra(Intent.EXTRA_TEXT, "Here is my PanelSena Client ID: $clientId")
-                            }
-                            context.startActivity(Intent.createChooser(intent, "Share Client ID"))
-                        },
-                        modifier = Modifier.size(36.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.Share,
-                            contentDescription = "Share ID",
+                            contentDescription = "Copy Device ID",
                             tint = Color(0xFF1A1A2E),
                             modifier = Modifier.size(18.dp)
                         )
                     }
                 }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Device Key
+                Text(text = "Device Key", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                Spacer(modifier = Modifier.height(2.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = deviceKey.ifEmpty { "GENERATING…" },
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                        color = Color(0xFF1A1A2E),
+                        letterSpacing = 0.5.sp,
+                        modifier = Modifier.weight(1f)
+                    )
+                    IconButton(
+                        onClick = {
+                            clipboardManager.setText(AnnotatedString(deviceKey))
+                            Toast.makeText(context, "Device Key copied!", Toast.LENGTH_SHORT).show()
+                        },
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.ContentCopy,
+                            contentDescription = "Copy Device Key",
+                            tint = Color(0xFF1A1A2E),
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Dashboard → Displays → Add Display → Link Device, then enter both values.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.Gray
+                )
             }
         }
 
@@ -488,7 +519,7 @@ fun SettingsBottomSheetContent(
             Column(modifier = Modifier.padding(8.dp)) {
                 FAQAccordionItem(
                     question = "How do I upload or update display content?",
-                    answer = "Log into the PanelSena Web Portal, click on 'Manage Displays', register your unique Client ID, and upload files. Your remote displays will sync automatically in real-time."
+                    answer = "Log into the PanelSena dashboard, go to Displays → Add Display → Link Device, and enter this device's Device ID and Device Key (found under Profile & Settings). Upload content and create schedules — your linked displays sync and play automatically in real-time."
                 )
                 Divider(color = Color(0xFFF7F6F2), thickness = 1.dp, modifier = Modifier.padding(horizontal = 12.dp))
                 FAQAccordionItem(

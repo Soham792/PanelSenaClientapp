@@ -15,13 +15,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.panelsena.client.core.utils.ClientIdManager
 import com.panelsena.client.ui.components.Premium3DIllustration
 import kotlinx.coroutines.delay
 
 @Composable
 fun SplashScreen(
-    clientIdManager: ClientIdManager,
     onSplashComplete: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -32,8 +30,7 @@ fun SplashScreen(
             targetValue = 1f,
             animationSpec = tween(600, easing = EaseOutQuad)
         )
-        clientIdManager.getOrCreateClientId()
-        delay(600)
+        delay(900)
         onSplashComplete()
     }
 

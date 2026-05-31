@@ -50,7 +50,8 @@ import java.net.URL
 @Composable
 fun FullscreenPlayerScreen(
     mediaItems: List<MediaItem>,
-    startIndex: Int,
+    currentIndex: Int,
+    onAdvance: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -63,7 +64,6 @@ fun FullscreenPlayerScreen(
         ctx as? Activity
     }
 
-    var currentIndex by remember { mutableIntStateOf(startIndex) }
     val currentItem = mediaItems.getOrNull(currentIndex)
 
     var overlayVisible by remember { mutableStateOf(true) }
@@ -86,11 +86,6 @@ fun FullscreenPlayerScreen(
                 show(WindowInsets.Type.statusBars() or WindowInsets.Type.navigationBars())
             }
         }
-    }
-
-    // Function to handle automatic advance
-    val onAdvance = {
-        currentIndex = (currentIndex + 1) % mediaItems.size
     }
 
     // Overlay auto-hide timer
@@ -195,7 +190,7 @@ fun FullscreenPlayerScreen(
 
                 // Watermark Label
                 Text(
-                    text = "PanelSena Client",
+                    text = "PanelSena",
                     color = Color.White.copy(alpha = 0.7f),
                     fontWeight = FontWeight.Bold,
                     style = MaterialTheme.typography.titleLarge,

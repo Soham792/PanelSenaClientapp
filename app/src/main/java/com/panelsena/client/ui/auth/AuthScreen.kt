@@ -60,10 +60,12 @@ fun AuthScreen(
     val scope = rememberCoroutineScope()
     var isLoading by remember { mutableStateOf(false) }
 
-    // Configure Google Sign In
+    // Configure Google Sign In.
+    // The web client ID is sourced from google-services.json (default_web_client_id) so it
+    // always matches the active Firebase project (panelsena-r2) instead of being hardcoded.
     val gso = remember {
         GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-            .requestIdToken("613555458349-fa99tp0go8dr1pv08qp20fjdd3ncfj4j.apps.googleusercontent.com") // Client type 3 Web Client ID from google-services.json
+            .requestIdToken(context.getString(com.panelsena.client.R.string.default_web_client_id))
             .requestEmail()
             .build()
     }

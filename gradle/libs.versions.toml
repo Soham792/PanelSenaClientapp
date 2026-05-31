@@ -46,6 +46,7 @@ androidx-hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navig
 # Firebase
 firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebaseBom" }
 firebase-firestore = { group = "com.google.firebase", name = "firebase-firestore-ktx" }
+firebase-database = { group = "com.google.firebase", name = "firebase-database-ktx" }
 firebase-crashlytics = { group = "com.google.firebase", name = "firebase-crashlytics-ktx" }
 firebase-auth = { group = "com.google.firebase", name = "firebase-auth-ktx" }
 play-services-auth = { group = "com.google.android.gms", name = "play-services-auth", version.ref = "playServicesAuth" }

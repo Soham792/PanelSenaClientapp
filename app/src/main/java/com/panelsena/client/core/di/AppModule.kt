@@ -5,6 +5,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
@@ -37,5 +38,14 @@ object AppModule {
     @Singleton
     fun provideFirebaseAuth(): FirebaseAuth {
         return FirebaseAuth.getInstance()
+    }
+
+    @Provides
+    @Singleton
+    fun provideFirebaseDatabase(): FirebaseDatabase {
+        // The PanelSena RTDB lives in the asia-southeast1 region, so the URL must be explicit.
+        return FirebaseDatabase.getInstance(
+            "https://panelsena-r2-default-rtdb.asia-southeast1.firebasedatabase.app"
+        )
     }
 }

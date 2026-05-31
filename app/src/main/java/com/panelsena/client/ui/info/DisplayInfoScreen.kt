@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.panelsena.client.core.theme.*
 import com.panelsena.client.data.model.AssignedDisplay
+import com.panelsena.client.data.model.LinkState
 import com.panelsena.client.ui.components.AnimatedStatusDot
 import com.panelsena.client.ui.components.InfoCard
 import com.panelsena.client.ui.components.Premium3DIllustration
@@ -34,7 +35,7 @@ import java.util.*
 
 @Composable
 fun DisplayInfoScreen(
-    clientId: String,
+    linkState: LinkState,
     display: AssignedDisplay?,
     isOnline: Boolean,
     modifier: Modifier = Modifier
@@ -42,6 +43,13 @@ fun DisplayInfoScreen(
     val clipboardManager = LocalClipboardManager.current
     val context = LocalContext.current
     val scrollState = rememberScrollState()
+
+    val deviceId = when (linkState) {
+        is LinkState.Unlinked -> linkState.deviceId
+        is LinkState.Linked -> linkState.deviceId
+        else -> ""
+    }
+    val isLinked = linkState is LinkState.Linked
 
     Column(
         modifier = modifier
@@ -88,23 +96,24 @@ fun DisplayInfoScreen(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Text(
-                    text = clientId.ifEmpty { "LOADING-ID" },
+                    text = deviceId.ifEmpty { "GENERATING…" },
                     style = MaterialTheme.typography.headlineLarge.copy(
                         fontFamily = FontFamily.Monospace,
-                        letterSpacing = 4.sp
+                        letterSpacing = 2.sp
                     ),
                     color = Color(0xFF1A1A2E),
                     fontWeight = FontWeight.ExtraBold,
-                    fontSize = 22.sp,
+                    fontSize = 18.sp,
                     textAlign = TextAlign.Center
                 )
 
                 Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
-                    text = "Your Client ID",
+                    text = if (isLinked) "Linked Device ID" else "Your Device ID — link it in the dashboard",
                     style = MaterialTheme.typography.bodyLarge,
-                    color = Color(0xFF1A1A2E).copy(alpha = 0.6f)
+                    color = Color(0xFF1A1A2E).copy(alpha = 0.6f),
+                    textAlign = TextAlign.Center
                 )
 
                 Spacer(modifier = Modifier.height(20.dp))
@@ -116,8 +125,8 @@ fun DisplayInfoScreen(
                 ) {
                     Button(
                         onClick = {
-                            clipboardManager.setText(AnnotatedString(clientId))
-                            Toast.makeText(context, "Client ID copied!", Toast.LENGTH_SHORT).show()
+                            clipboardManager.setText(AnnotatedString(deviceId))
+                            Toast.makeText(context, "Device ID copied!", Toast.LENGTH_SHORT).show()
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = Color.White),
                         shape = RoundedCornerShape(16.dp),
@@ -147,10 +156,10 @@ fun DisplayInfoScreen(
                         onClick = {
                             val sendIntent = Intent().apply {
                                 action = Intent.ACTION_SEND
-                                putExtra(Intent.EXTRA_TEXT, "Here is my PanelSena Client ID: $clientId")
+                                putExtra(Intent.EXTRA_TEXT, "Here is my PanelSena Device ID: $deviceId")
                                 type = "text/plain"
                             }
-                            val shareIntent = Intent.createChooser(sendIntent, "Share Client ID")
+                            val shareIntent = Intent.createChooser(sendIntent, "Share Device ID")
                             context.startActivity(shareIntent)
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1A1A2E)),
@@ -187,12 +196,21 @@ fun DisplayInfoScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
+            // Link Status Card
+            InfoCard(
+                icon = Icons.Rounded.Link,
+                iconColor = if (isLinked) StatusActive else CardYellow,
+                label = "Link Status",
+                value = if (isLinked) "Linked to account" else "Not linked yet"
+            )
+
             // Display Name Card
             InfoCard(
                 icon = Icons.Rounded.Tv,
                 iconColor = CardPurple,
                 label = "Display Name",
-                value = display?.name?.ifEmpty { "Not Assigned Yet" } ?: "Waiting for link"
+                value = (linkState as? LinkState.Linked)?.displayName
+                    ?: display?.name?.ifEmpty { "Not Assigned Yet" } ?: "Waiting for link"
             )
 
             // Connection Status Card
@@ -247,19 +265,19 @@ fun DisplayInfoScreen(
             }
 
             // Content Items Count Card
-            val itemsCount = display?.assignedMediaUrls?.size ?: 0
+            val itemsCount = display?.mediaItems?.size ?: 0
             InfoCard(
                 icon = Icons.Rounded.Movie,
                 iconColor = CardPink,
                 label = "Content Items",
-                value = "$itemsCount files assigned"
+                value = "$itemsCount files in queue"
             )
 
             // Last Updated Card
-            val lastUpdatedStr = remember(display?.updatedAt) {
-                display?.updatedAt?.let {
+            val lastUpdatedStr = remember(display?.updatedAtMillis) {
+                display?.updatedAtMillis?.let {
                     val sdf = SimpleDateFormat("MMM d, yyyy 'at' HH:mm", Locale.getDefault())
-                    sdf.format(it.toDate())
+                    sdf.format(Date(it))
                 } ?: "Unknown"
             }
             InfoCard(

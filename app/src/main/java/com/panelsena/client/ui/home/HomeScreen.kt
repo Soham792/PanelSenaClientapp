@@ -122,7 +122,7 @@ fun HomeScreen(
             }
         } else {
             HomeTopBar(
-                clientId = viewModel.clientId,
+                deviceId = viewModel.deviceId,
                 date = viewModel.todayDate,
                 onProfileClick = onProfileClick,
                 onSearchClick = { searchActive = true }
@@ -134,7 +134,7 @@ fun HomeScreen(
         // Hero Card
         HeroStatusCard(
             display = display,
-            clientId = viewModel.clientId
+            deviceId = viewModel.deviceId
         )
 
         Spacer(modifier = Modifier.height(20.dp))
@@ -253,7 +253,7 @@ fun HomeScreen(
 
 @Composable
 fun HomeTopBar(
-    clientId: String,
+    deviceId: String,
     date: String,
     onProfileClick: () -> Unit,
     onSearchClick: () -> Unit
@@ -268,10 +268,10 @@ fun HomeTopBar(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.fillMaxWidth()
     ) {
-        // Colored circular avatar representing first letter of Client ID
-        val letter = clientId.take(1).ifEmpty { "P" }
+        // Colored circular avatar representing first letter of the signed-in user
+        val letter = userName.take(1).uppercase().ifEmpty { "P" }
         val avatarColors = listOf(CardPurple, CardYellow, CardPink, CardSky, CardMint)
-        val avatarBg = remember(clientId) { avatarColors.random() }
+        val avatarBg = remember(deviceId) { avatarColors.random() }
 
         Box(
             contentAlignment = Alignment.Center,
@@ -324,11 +324,11 @@ fun HomeTopBar(
 }
 
 @Composable
-fun HeroStatusCard(display: AssignedDisplay?, clientId: String) {
+fun HeroStatusCard(display: AssignedDisplay?, deviceId: String) {
     val clipboardManager = LocalClipboardManager.current
     val context = LocalContext.current
 
-    if (display != null && display.assignedMediaUrls.isNotEmpty()) {
+    if (display != null && display.mediaItems.isNotEmpty()) {
         Card(
             colors = CardDefaults.cardColors(containerColor = CardPurple),
             shape = RoundedCornerShape(24.dp),
@@ -363,7 +363,7 @@ fun HeroStatusCard(display: AssignedDisplay?, clientId: String) {
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "${display.assignedMediaUrls.size} items in queue",
+                        text = "${display.mediaItems.size} items in queue",
                         style = MaterialTheme.typography.bodyMedium,
                         color = Color(0xFF1A1A2E).copy(alpha = 0.8f)
                     )
@@ -409,7 +409,7 @@ fun HeroStatusCard(display: AssignedDisplay?, clientId: String) {
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Share your Client ID with admin",
+                            text = "Link this device using its Device ID",
                             style = MaterialTheme.typography.bodyLarge,
                             color = Color(0xFF1A1A2E).copy(alpha = 0.8f)
                         )
@@ -422,16 +422,16 @@ fun HeroStatusCard(display: AssignedDisplay?, clientId: String) {
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Copy Client ID Chip
+                // Copy Device ID Chip
                 Surface(
                     color = Color.White.copy(alpha = 0.35f),
                     shape = RoundedCornerShape(16.dp),
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable {
-                            clipboardManager.setText(AnnotatedString(clientId))
+                            clipboardManager.setText(AnnotatedString(deviceId))
                             Toast
-                                .makeText(context, "Client ID copied!", Toast.LENGTH_SHORT)
+                                .makeText(context, "Device ID copied!", Toast.LENGTH_SHORT)
                                 .show()
                         }
                 ) {
@@ -441,11 +441,11 @@ fun HeroStatusCard(display: AssignedDisplay?, clientId: String) {
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
                     ) {
                         Text(
-                            text = clientId.ifEmpty { "LOADING..." },
-                            style = MaterialTheme.typography.titleLarge,
+                            text = deviceId.ifEmpty { "GENERATING…" },
+                            style = MaterialTheme.typography.titleMedium,
                             color = Color(0xFF1A1A2E),
                             fontWeight = FontWeight.Bold,
-                            letterSpacing = 2.sp,
+                            letterSpacing = 1.sp,
                             modifier = Modifier.weight(1f)
                         )
                         Icon(
@@ -473,7 +473,7 @@ fun MediaTypeIconRow(mediaTypes: List<String>) {
                 "image" -> "Image"
                 "video" -> "Video"
                 "pdf" -> "PDF"
-                else -> type.capitalize()
+                else -> type.replaceFirstChar { it.uppercase() }
             }
             Surface(
                 color = Color.White.copy(alpha = 0.3f),
